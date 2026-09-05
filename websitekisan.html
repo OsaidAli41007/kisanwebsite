@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kisan Procurement Admin</title>
+    <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', -apple-system, sans-serif; background-color: #F5F5F5; color: #212121; }
+        .text-muted { color: #9E9E9E; }
+        .text-secondary { color: #616161; }
+        .bg-primary { background-color: #2E7D32; }
+        .text-primary { color: #2E7D32; }
+        .border-primary { border-color: #2E7D32; }
+        .bg-primary-light { background-color: #4CAF50; }
+        .bg-primary-lighter { background-color: #81C784; }
+        .bg-sidebar { background-color: #1B5E20; }
+        
+        .badge-pending { background-color: #FFF3E0; color: #E65100; }
+        .badge-processing { background-color: #E3F2FD; color: #1565C0; }
+        .badge-completed { background-color: #E8F5E9; color: #2E7D32; }
+        .badge-cancelled { background-color: #FFEBEE; color: #C62828; }
+
+        .sidebar-item { transition: all 0.2s; border-left: 4px solid transparent; }
+        .sidebar-item:hover { background-color: rgba(255,255,255,0.1); }
+        .sidebar-item.active { background-color: rgba(255,255,255,0.2); border-left-color: #81C784; font-weight: 600; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .screen-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .screen-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .modal-overlay { display: none; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); animation: fadeIn 0.2s; }
+        .modal-overlay.active { display: flex; }
+        
+        .slide-panel { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .slide-panel.active { transform: translateX(0); }
+
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 1000; }
+        .toast { transform: translateX(120%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .toast.show { transform: translateX(0); }
+        
+        canvas { width: 100% !important; height: auto !important; max-height: 250px; }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="absolute inset-0 bg-[#F5F5F5] flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md border border-gray-100">
+            <div class="text-center mb-8">
+                <div class="flex justify-center items-center mb-2">
+                    <span class="text-4xl">🌾</span>
+                </div>
+                <h1 class="text-2xl font-bold text-[#2E7D32] t-translate" data-en="Kisan Procurement" data-bn="কিষান সংগ্রহ">Kisan Procurement</h1>
+                <p class="text-gray-500 text-sm mt-1 t-translate" data-en="Admin Portal" data-bn="অ্যাডমিন পোর্টাল">Admin Portal</p>
+            </div>
+            
+            <form onsubmit="event.preventDefault(); login();">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1 t-translate" data-en="Email / Staff ID" data-bn="ইমেইল / স্টাফ আইডি">Email / Staff ID</label>
+                    <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#4CAF50] focus:border-[#4CAF50]" value="admin@kisan.wb.gov.in" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1 t-translate" data-en="Password" data-bn="পাসওয়ার্ড">Password</label>
+                    <div class="relative">
+                        <input type="password" id="login-pwd" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#4CAF50] focus:border-[#4CAF50]" value="password123" required>
+                        <button type="button" onclick="togglePassword()" class="absolute right-3 top-2 text-gray-400 hover:text-gray-600">👁️</button>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1 t-translate" data-en="Centre" data-bn="কেন্দ্র">Centre</label>
+                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#4CAF50]">
+                        <option>Kolkata Centre</option>
+                        <option>Howrah Centre</option>
+                        <option>Hooghly Centre</option>
+                    </select>
+                </div>
+                <div class="mb-6 flex gap-4">
+                    <label class="flex items-center text-sm">
+                        <input type="radio" name="role" class="mr-2 text-[#4CAF50]" checked> Staff
+                    </label>
+                    <label class="flex items-center text-sm">
+                        <input type="radio" name="role" class="mr-2 text-[#4CAF50]"> Admin
+                    </label>
+                </div>
+                <button type="submit" class="w-full bg-[#4CAF50] hover:bg-[#2E7D32] text-white font-medium py-2 px-4 rounded-md transition-colors t-translate" data-en="Login" data-bn="লগইন">Login</button>
+                <div class="mt-4 text-center">
+                    <a href="#" class="text-sm text-[#2E7D32] hover:underline t-translate" data-en="Forgot Password?" data-bn="পাসওয়ার্ড ভুলে গেছেন?">Forgot Password?</a>
+                </div>
+            </form>
+            <div class="mt-8 text-center border-t pt-4">
+                <p class="text-xs text-gray-500 t-translate" data-en="Government of West Bengal · Department of Agriculture" data-bn="পশ্চিমবঙ্গ সরকার · কৃষি বিভাগ">Government of West Bengal · Department of Agriculture</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="main-app" class="hidden flex h-full w-full">
+        
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-sidebar text-white flex flex-col h-full shrink-0">
+            <div class="p-4 flex items-center gap-3 border-b border-[rgba(255,255,255,0.1)]">
+                <span class="text-2xl">🌾</span>
+                <div>
+                    <h2 class="font-bold text-lg leading-tight">Kisan Admin</h2>
+                    <p class="text-xs text-green-200">Govt. of West Bengal</p>
+                </div>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
+                <a href="#" onclick="navTo('screen-dashboard', this)" class="sidebar-item active flex items-center px-6 py-3 text-sm">
+                    <span class="mr-3 w-5 text-center">📊</span> <span class="t-translate" data-en="Dashboard" data-bn="ড্যাশবোর্ড">Dashboard</span>
+                </a>
+                <a href="#" onclick="navTo('screen-queue', this)" class="sidebar-item flex items-center px-6 py-3 text-sm">
+                    <span class="mr-3 w-5 text-center">📋</span> <span class="t-translate" data-en="Queue Management" data-bn="সারি ব্যবস্থাপনা">Queue Management</span>
+                </a>
+                <a href="#" onclick="navTo('screen-farmers', this)" class="sidebar-item flex items-center px-6 py-3 text-sm">
+                    <span class="mr-3 w-5 text-center">👨‍🌾</span> <span class="t-translate" data-en="Farmer Management" data-bn="কৃষক ব্যবস্থাপনা">Farmer Management</span>
+                </a>
+                <a href="#" onclick="navTo('screen-slots', this)" class="sidebar-item flex items-center px-6 py-3 text-sm">
+                    <span class="mr-3 w-5 text-center">📅</span> <span class="t-translate" data-en="Slot Management" data-bn="স্লট ব্যবস্থাপনা">Slot Management</span>
+                </a>
+                <a href="#" onclick="navTo('screen-procurement', this)" class="sidebar-item flex items-center px-6 py-3 text-sm">
+                    <span class="mr-3 w-5 text-center">🛒</span> <span class="t-translate" data-en="Procurement" data-bn="সংগ্রহ">Procurement</span>
+                </a>
+                <a href="#" onclick="navTo('screen-payments', this)" class="sidebar-item flex items-center px-6 py-3 text-sm">
+                    <span class="mr-3 w-5 text-center">💰</span> <span class="t-translate" data-en="Payments" data-bn="পেমেন্ট">Payments</span>
+                </a>
+                <a href="#" onclick="navTo('screen-analytics', this)" class="sidebar-item flex items-center px-6 py-3 text-sm">
+                    <span class="mr-3 w-5 text-center">📈</span> <span class="t-translate" data-en="Analytics" data-bn="বিশ্লেষণ">Analytics</span>
+                </a>
+            </nav>
+            
+            <div class="border-t border-[rgba(255,255,255,0.1)] py-2">
+                <a href="#" class="sidebar-item flex items-center px-6 py-3 text-sm">
+                    <span class="mr-3 w-5 text-center">⚙️</span> <span class="t-translate" data-en="Settings" data-bn="সেটিংস">Settings</span>
+                </a>
+                <a href="#" onclick="logout()" class="sidebar-item flex items-center px-6 py-3 text-sm text-red-300 hover:text-red-200">
+                    <span class="mr-3 w-5 text-center">🚪</span> <span class="t-translate" data-en="Logout" data-bn="লগআউট">Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- CONTENT AREA -->
+        <div class="flex-1 flex flex-col h-full overflow-hidden bg-[#F5F5F5]">
+            <!-- HEADER -->
+            <header class="h-16 bg-white shadow-sm flex items-center justify-between px-6 shrink-0 z-10">
+                <div class="flex items-center gap-4">
+                    <h1 id="header-title" class="font-semibold text-lg text-gray-800 t-translate" data-en="Dashboard" data-bn="ড্যাশবোর্ড">Dashboard</h1>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <div class="relative hidden md:block">
+                        <span class="absolute left-3 top-2 text-gray-400">🔍</span>
+                        <input type="text" placeholder="Search..." class="pl-9 pr-4 py-1.5 bg-gray-100 border-transparent rounded-full text-sm focus:bg-white focus:border-[#4CAF50] focus:ring-1 focus:ring-[#4CAF50] outline-none w-64 transition-all">
+                    </div>
+                    
+                    <button onclick="toggleLang()" class="text-sm font-medium text-gray-600 hover:text-[#2E7D32] px-2 py-1 rounded border border-gray-200">
+                        <span id="lang-ind">EN | বাং</span>
+                    </button>
+                    
+                    <div class="relative cursor-pointer">
+                        <span class="text-xl">🔔</span>
+                        <span class="absolute -top-1 -right-1 bg-[#F44336] text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">3</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 border-l pl-6">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-semibold text-gray-800">Amit Roy</p>
+                            <p class="text-xs text-gray-500">Centre Staff</p>
+                        </div>
+                        <div class="h-9 w-9 rounded-full bg-[#81C784] text-white flex items-center justify-center font-bold">
+                            AR
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- MAIN SCREENS CONTAINER -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto p-6 relative">
+                
+                <!-- 1. DASHBOARD OVERVIEW -->
+                <div id="screen-dashboard" class="screen-content active">
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                            <p class="text-gray-500 text-sm font-medium mb-1 t-translate" data-en="Total Registered Farmers" data-bn="মোট নিবন্ধিত কৃষক">Total Registered Farmers</p>
+                            <div class="flex items-end justify-between">
+                                <h3 class="text-2xl font-bold text-gray-800">2,847</h3>
+                                <span class="text-sm text-green-600 bg-green-50 px-2 py-0.5 rounded font-medium">↑12% <span class="text-xs text-gray-400">from last month</span></span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                            <p class="text-gray-500 text-sm font-medium mb-1 t-translate" data-en="Today's Bookings" data-bn="আজকের বুকিং">Today's Bookings</p>
+                            <div class="flex items-end justify-between">
+                                <h3 class="text-2xl font-bold text-gray-800">45</h3>
+                                <span class="text-sm text-gray-500">out of 60 capacity</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                            <p class="text-gray-500 text-sm font-medium mb-1 t-translate" data-en="Farmers Waiting" data-bn="অপেক্ষমান কৃষক">Farmers Waiting</p>
+                            <div class="flex items-end justify-between">
+                                <h3 class="text-2xl font-bold text-[#FF9800]">8</h3>
+                                <span class="text-sm text-gray-500">in queue now</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                            <p class="text-gray-500 text-sm font-medium mb-1 t-translate" data-en="Completed Today" data-bn="আজ সম্পন্ন">Completed Today</p>
+                            <div class="flex items-end justify-between">
+                                <h3 class="text-2xl font-bold text-[#4CAF50]">32</h3>
+                                <span class="text-sm text-gray-500">procurements</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                            <p class="text-gray-500 text-sm font-medium mb-1 t-translate" data-en="Pending Payments" data-bn="বকেয়া পেমেন্ট">Pending Payments</p>
+                            <div class="flex items-end justify-between">
+                                <h3 class="text-2xl font-bold text-[#F44336]">₹4,52,300</h3>
+                                <span class="text-sm text-gray-500">18 farmers</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                            <p class="text-gray-500 text-sm font-medium mb-1 t-translate" data-en="Centre Capacity" data-bn="কেন্দ্রের ক্ষমতা">Centre Capacity</p>
+                            <div class="flex items-end justify-between">
+                                <h3 class="text-2xl font-bold text-gray-800">75%</h3>
+                                <div class="w-24 bg-gray-200 rounded-full h-2.5 mt-2">
+                                    <div class="bg-[#4CAF50] h-2.5 rounded-full" style="width: 75%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Charts Section -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <h3 class="font-semibold text-gray-800 mb-4 text-sm">Bookings - Last 7 Days</h3>
+                                    <div class="relative h-48 w-full"><canvas id="dashChart1"></canvas></div>
+                                </div>
+                                <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                                    <h3 class="font-semibold text-gray-800 mb-4 text-sm">Procurement by Crop</h3>
+                                    <div class="relative h-48 w-full flex justify-center"><canvas id="dashChart2"></canvas></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Activity Feed -->
+                            <div class="bg-white rounded-lg shadow-sm border border-gray-100">
+                                <div class="px-5 py-4 border-b border-gray-100">
+                                    <h3 class="font-semibold text-gray-800 text-sm">Recent Activity</h3>
+                                </div>
+                                <div class="p-5 space-y-4">
+                                    <div class="flex gap-4">
+                                        <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0">✓</div>
+                                        <div>
+                                            <p class="text-sm text-gray-800">Farmer <b>#A-127</b> procurement completed</p>
+                                            <p class="text-xs text-gray-500 mt-1">2 min ago</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-4">
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">₹</div>
+                                        <div>
+                                            <p class="text-sm text-gray-800">Payment <b>₹12,450</b> credited to Sunil Mondal</p>
+                                            <p class="text-xs text-gray-500 mt-1">5 min ago</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-4">
+                                        <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">👤</div>
+                                        <div>
+                                            <p class="text-sm text-gray-800">New registration: <b>Arun Ghosh</b> verified</p>
+                                            <p class="text-xs text-gray-500 mt-1">12 min ago</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-4">
+                                        <div class="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">📅</div>
+                                        <div>
+                                            <p class="text-sm text-gray-800">Slot for Sep 2 opened (60 slots)</p>
+                                            <p class="text-xs text-gray-500 mt-1">1 hour ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Queue Snapshot -->
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col">
+                            <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-lg">
+                                <h3 class="font-semibold text-gray-800 text-sm flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span> Live Queue
+                                </h3>
+                            </div>
+                            <div class="p-5 flex-1">
+                                <div class="bg-[#E8F5E9] border border-[#A5D6A7] rounded-lg p-4 mb-6 text-center">
+                                    <p class="text-xs text-[#2E7D32] font-semibold uppercase tracking-wider mb-1">Currently Serving</p>
+                                    <h2 class="text-3xl font-bold text-[#1B5E20] mb-1">#A-127</h2>
+                                    <p class="text-sm text-[#2E7D32] font-medium">Ramesh Das • Rice</p>
+                                </div>
+                                
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Next in Queue</h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100">
+                                        <div>
+                                            <span class="font-bold text-gray-800 block">#A-128</span>
+                                            <span class="text-xs text-gray-500">Sunil Mondal</span>
+                                        </div>
+                                        <span class="text-xs font-medium bg-orange-100 text-orange-800 px-2 py-1 rounded">Waiting</span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100">
+                                        <div>
+                                            <span class="font-bold text-gray-800 block">#A-129</span>
+                                            <span class="text-xs text-gray-500">Priya Sen</span>
+                                        </div>
+                                        <span class="text-xs font-medium bg-orange-100 text-orange-800 px-2 py-1 rounded">Waiting</span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100">
+                                        <div>
+                                            <span class="font-bold text-gray-800 block">#A-130</span>
+                                            <span class="text-xs text-gray-500">Kamal Ghosh</span>
+                                        </div>
+                                        <span class="text-xs font-medium bg-orange-100 text-orange-800 px-2 py-1 rounded">Waiting</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="px-5 py-4 border-t border-gray-100">
+                                <a href="#" onclick="navTo('screen-queue', document.querySelectorAll('.sidebar-item')[1])" class="text-sm text-[#2E7D32] font-medium hover:underline flex justify-center items-center w-full">View Full Queue →</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. QUEUE MANAGEMENT -->
+                <div id="screen-queue" class="screen-content h-full flex flex-col">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 shrink-0">
+                        <div class="md:col-span-2 bg-gradient-to-r from-[#2E7D32] to-[#4CAF50] rounded-lg p-5 text-white shadow flex justify-between items-center">
+                            <div>
+                                <p class="text-green-100 text-sm font-medium mb-1 uppercase tracking-wider">Current Token</p>
+                                <h2 class="text-4xl font-bold mb-1">#A-127</h2>
+                                <p class="text-white">Ramesh Das • Rice (500 kg)</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="bg-white/20 px-3 py-1 rounded text-sm mb-2 backdrop-blur-sm">Slot: 10:00-10:30 AM</div>
+                                <span class="badge-processing px-3 py-1 rounded-full text-xs font-bold shadow-sm">PROCESSING</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-center text-center">
+                            <div class="flex justify-center gap-2 items-baseline">
+                                <h3 class="text-3xl font-bold text-gray-800">8</h3>
+                                <span class="text-sm text-gray-500">waiting</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2">Avg wait: 18 min</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-center text-center">
+                            <div class="flex justify-center gap-4 text-sm">
+                                <div><span class="block text-xl font-bold text-green-600">32</span> Served</div>
+                                <div><span class="block text-xl font-bold text-red-500">3</span> No-show</div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2 flex items-center justify-center gap-1"><span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Live update active</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                                        <th class="p-4">Token No.</th>
+                                        <th class="p-4">Farmer Name</th>
+                                        <th class="p-4">Mobile</th>
+                                        <th class="p-4">Slot Time</th>
+                                        <th class="p-4">Crop</th>
+                                        <th class="p-4">Qty (Est.)</th>
+                                        <th class="p-4">Status</th>
+                                        <th class="p-4 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="queue-table-body" class="text-sm divide-y divide-gray-100">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. FARMER MANAGEMENT -->
+                <div id="screen-farmers" class="screen-content h-full flex flex-col">
+                    <div class="flex flex-wrap gap-3 justify-between items-center mb-4 shrink-0">
+                        <div class="flex flex-wrap gap-3">
+                            <div class="relative">
+                                <input type="text" placeholder="Search farmer, Aadhaar..." class="pl-8 pr-3 py-2 border border-gray-300 rounded text-sm w-64 focus:ring-1 focus:ring-green-500 outline-none">
+                                <span class="absolute left-2.5 top-2.5 text-gray-400 text-xs">🔍</span>
+                            </div>
+                            <select class="border border-gray-300 rounded px-3 py-2 text-sm outline-none"><option>All Districts</option><option>Kolkata</option><option>Howrah</option><option>Hooghly</option><option>24 Parganas</option></select>
+                            <select class="border border-gray-300 rounded px-3 py-2 text-sm outline-none"><option>All Crops</option><option>Rice</option><option>Wheat</option><option>Jute</option><option>Potato</option></select>
+                            <select class="border border-gray-300 rounded px-3 py-2 text-sm outline-none"><option>All Status</option><option>Verified ✅</option><option>Pending ⏳</option><option>Rejected ❌</option></select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="px-4 py-2 bg-white border border-gray-300 rounded text-sm font-medium hover:bg-gray-50 text-gray-700">Export CSV</button>
+                            <button class="px-4 py-2 bg-white border border-gray-300 rounded text-sm font-medium hover:bg-gray-50 text-gray-700">Export PDF</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden relative">
+                        <div class="overflow-x-auto flex-1">
+                            <table class="w-full text-left border-collapse cursor-pointer">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold sticky top-0 bg-gray-50 z-10">
+                                        <th class="p-4">Farmer Name</th>
+                                        <th class="p-4">Mobile</th>
+                                        <th class="p-4">Aadhaar</th>
+                                        <th class="p-4">District</th>
+                                        <th class="p-4">Crop Type</th>
+                                        <th class="p-4">Reg. Date</th>
+                                        <th class="p-4">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="farmer-table-body" class="text-sm divide-y divide-gray-100">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-4 border-t border-gray-200 bg-white text-xs text-gray-500 flex justify-between items-center">
+                            <span>Showing 1-10 of 2,847 farmers</span>
+                            <div class="flex gap-1">
+                                <button class="px-2 py-1 border rounded disabled:opacity-50" disabled>&lt;</button>
+                                <button class="px-2 py-1 border rounded bg-green-50 text-green-700 font-bold">1</button>
+                                <button class="px-2 py-1 border rounded">2</button>
+                                <button class="px-2 py-1 border rounded">3</button>
+                                <button class="px-2 py-1 border rounded">&gt;</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. SLOT MANAGEMENT -->
+                <div id="screen-slots" class="screen-content h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-6 shrink-0 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                        <div class="flex items-center gap-4">
+                            <button class="p-2 hover:bg-gray-100 rounded-full transition">&larr;</button>
+                            <h2 class="text-xl font-bold text-gray-800 w-40 text-center">September 2026</h2>
+                            <button class="p-2 hover:bg-gray-100 rounded-full transition">&rarr;</button>
+                        </div>
+                        <div class="flex bg-gray-100 p-1 rounded-lg">
+                            <button class="px-4 py-1.5 bg-white shadow-sm rounded-md text-sm font-medium">Calendar View</button>
+                            <button class="px-4 py-1.5 text-gray-600 rounded-md text-sm font-medium hover:bg-gray-200">List View</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 flex-1 p-4 flex flex-col">
+                        <div class="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-lg overflow-hidden flex-1">
+                            <!-- Days Header -->
+                            <div class="bg-gray-50 p-2 text-center text-xs font-semibold text-gray-600 uppercase">Sun</div>
+                            <div class="bg-gray-50 p-2 text-center text-xs font-semibold text-gray-600 uppercase">Mon</div>
+                            <div class="bg-gray-50 p-2 text-center text-xs font-semibold text-gray-600 uppercase">Tue</div>
+                            <div class="bg-gray-50 p-2 text-center text-xs font-semibold text-gray-600 uppercase">Wed</div>
+                            <div class="bg-gray-50 p-2 text-center text-xs font-semibold text-gray-600 uppercase">Thu</div>
+                            <div class="bg-gray-50 p-2 text-center text-xs font-semibold text-gray-600 uppercase">Fri</div>
+                            <div class="bg-gray-50 p-2 text-center text-xs font-semibold text-gray-600 uppercase">Sat</div>
+                            
+                            <!-- Calendar Grid Populated by JS -->
+                            <div id="calendar-grid" class="contents"></div>
+                        </div>
+                        <div class="mt-4 flex gap-4 text-xs justify-center">
+                            <span class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-green-100 border border-green-300"></div> Available</span>
+                            <span class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-orange-100 border border-orange-300"></div> Filling Up</span>
+                            <span class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-red-100 border border-red-300"></div> Full</span>
+                            <span class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-gray-100 border border-gray-300"></div> Closed</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. PROCUREMENT -->
+                <div id="screen-procurement" class="screen-content h-full flex flex-col">
+                    <div class="flex flex-wrap gap-3 justify-between items-center mb-4 shrink-0">
+                        <div class="flex flex-wrap gap-3">
+                            <div class="relative">
+                                <input type="text" placeholder="Search..." class="pl-8 pr-3 py-2 border border-gray-300 rounded text-sm w-48 focus:ring-1 focus:ring-green-500 outline-none">
+                                <span class="absolute left-2.5 top-2.5 text-gray-400 text-xs">🔍</span>
+                            </div>
+                            <select class="border border-gray-300 rounded px-3 py-2 text-sm outline-none"><option>All Crops</option></select>
+                            <select class="border border-gray-300 rounded px-3 py-2 text-sm outline-none"><option>All Statuses</option></select>
+                            <input type="date" class="border border-gray-300 rounded px-3 py-2 text-sm outline-none text-gray-600" value="2026-09-01">
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                                        <th class="p-4">Farmer Name</th>
+                                        <th class="p-4">Crop</th>
+                                        <th class="p-4">Qty</th>
+                                        <th class="p-4">Rate/Unit</th>
+                                        <th class="p-4">Total Amount</th>
+                                        <th class="p-4">Status</th>
+                                        <th class="p-4">Date</th>
+                                        <th class="p-4 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="proc-table-body" class="text-sm divide-y divide-gray-100">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. PAYMENTS -->
+                <div id="screen-payments" class="screen-content h-full flex flex-col">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 shrink-0">
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 border-l-4 border-l-[#4CAF50]">
+                            <p class="text-gray-500 text-xs font-medium uppercase mb-1">Disbursed Today</p>
+                            <h3 class="text-xl font-bold text-gray-800">₹28,550</h3>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 border-l-4 border-l-[#F44336]">
+                            <p class="text-gray-500 text-xs font-medium uppercase mb-1">Pending (4)</p>
+                            <h3 class="text-xl font-bold text-gray-800">₹31,000</h3>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 border-l-4 border-l-[#2196F3]">
+                            <p class="text-gray-500 text-xs font-medium uppercase mb-1">Processing (2)</p>
+                            <h3 class="text-xl font-bold text-gray-800">₹19,600</h3>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                            <p class="text-gray-500 text-xs font-medium uppercase mb-1">Completed This Week</p>
+                            <h3 class="text-xl font-bold text-gray-800">₹1,82,450</h3>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-4 shrink-0">
+                        <div class="flex gap-3">
+                            <select class="border border-gray-300 rounded px-3 py-2 text-sm outline-none"><option>Status: Pending</option><option>All</option></select>
+                            <input type="date" class="border border-gray-300 rounded px-3 py-2 text-sm outline-none text-gray-600">
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="processSelectedPayments()" class="px-4 py-2 bg-[#2196F3] text-white rounded text-sm font-medium hover:bg-blue-600 shadow-sm transition">Process Selected</button>
+                            <button class="px-4 py-2 bg-white border border-gray-300 rounded text-sm font-medium hover:bg-gray-50">Export</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                                        <th class="p-4 w-10"><input type="checkbox" id="pay-select-all" class="rounded text-blue-500 focus:ring-blue-500"></th>
+                                        <th class="p-4">Farmer Name</th>
+                                        <th class="p-4">Crop</th>
+                                        <th class="p-4">Qty</th>
+                                        <th class="p-4">Total Amount</th>
+                                        <th class="p-4">Status</th>
+                                        <th class="p-4">Txn ID</th>
+                                        <th class="p-4 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pay-table-body" class="text-sm divide-y divide-gray-100">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. ANALYTICS -->
+                <div id="screen-analytics" class="screen-content h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-6 shrink-0">
+                        <div class="flex gap-3">
+                            <select class="bg-white border border-gray-300 rounded px-3 py-2 text-sm outline-none shadow-sm"><option>Last 30 Days</option></select>
+                            <select class="bg-white border border-gray-300 rounded px-3 py-2 text-sm outline-none shadow-sm"><option>All Centres</option></select>
+                        </div>
+                        <button class="px-4 py-2 bg-white border border-gray-300 rounded text-sm font-medium hover:bg-gray-50 shadow-sm flex items-center gap-2">
+                            <span>📥</span> Export Report
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 overflow-y-auto pb-4">
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col">
+                            <h3 class="font-semibold text-gray-800 mb-4 text-sm">Procurement Volume Over Time (Tons)</h3>
+                            <div class="relative flex-1 min-h-[250px]"><canvas id="analyticsChart1"></canvas></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col">
+                            <h3 class="font-semibold text-gray-800 mb-4 text-sm">Procurement by Crop Type (kg)</h3>
+                            <div class="relative flex-1 min-h-[250px]"><canvas id="analyticsChart2"></canvas></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col">
+                            <h3 class="font-semibold text-gray-800 mb-4 text-sm">Farmer Registrations (Cumulative)</h3>
+                            <div class="relative flex-1 min-h-[250px]"><canvas id="analyticsChart3"></canvas></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col">
+                            <h3 class="font-semibold text-gray-800 mb-4 text-sm">Payment Status Breakdown</h3>
+                            <div class="relative flex-1 min-h-[250px] flex justify-center"><canvas id="analyticsChart4"></canvas></div>
+                        </div>
+                        
+                        <!-- Centre comparison table -->
+                        <div class="md:col-span-2 bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                            <div class="px-5 py-4 border-b border-gray-100">
+                                <h3 class="font-semibold text-gray-800 text-sm">Centre-wise Comparison</h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold">
+                                            <th class="p-3 pl-5">Centre</th>
+                                            <th class="p-3 text-right">Farmers</th>
+                                            <th class="p-3 text-right">Procurements</th>
+                                            <th class="p-3 text-right">Volume</th>
+                                            <th class="p-3 text-right pr-5">Payments</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-sm divide-y divide-gray-100">
+                                        <tr><td class="p-3 pl-5 font-medium">Kolkata Centre</td><td class="p-3 text-right">1,200</td><td class="p-3 text-right">450</td><td class="p-3 text-right">8,500 kg</td><td class="p-3 text-right pr-5">₹4,25,000</td></tr>
+                                        <tr><td class="p-3 pl-5 font-medium">Howrah Centre</td><td class="p-3 text-right">890</td><td class="p-3 text-right">320</td><td class="p-3 text-right">6,200 kg</td><td class="p-3 text-right pr-5">₹3,10,000</td></tr>
+                                        <tr><td class="p-3 pl-5 font-medium">Hooghly Centre</td><td class="p-3 text-right">757</td><td class="p-3 text-right">280</td><td class="p-3 text-right">5,100 kg</td><td class="p-3 text-right pr-5">₹2,55,000</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- MODALS & OVERLAYS -->
+
+    <!-- Farmer Detail Panel (Slide-in) -->
+    <div id="panel-farmer" class="fixed inset-y-0 right-0 w-96 bg-white shadow-2xl z-40 border-l border-gray-200 slide-panel flex flex-col">
+        <div class="p-4 border-b flex justify-between items-center bg-gray-50 shrink-0">
+            <h3 class="font-semibold text-lg">Farmer Details</h3>
+            <button onclick="closePanel('panel-farmer')" class="text-gray-500 hover:text-gray-800 text-xl">&times;</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6" id="farmer-detail-content">
+            <!-- Populated dynamically, static placeholder for structure -->
+        </div>
+        <div class="p-4 border-t bg-gray-50 flex gap-3 shrink-0" id="farmer-detail-actions">
+            <!-- Populated dynamically -->
+        </div>
+    </div>
+
+    <!-- Slot Detail Panel (Slide-in) -->
+    <div id="panel-slot" class="fixed inset-y-0 right-0 w-[500px] max-w-full bg-white shadow-2xl z-40 border-l border-gray-200 slide-panel flex flex-col">
+        <div class="p-4 border-b flex justify-between items-center bg-gray-50 shrink-0">
+            <h3 class="font-semibold text-lg" id="slot-date-title">Date Details</h3>
+            <button onclick="closePanel('panel-slot')" class="text-gray-500 hover:text-gray-800 text-xl">&times;</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4">
+            <table class="w-full text-left border-collapse text-sm mb-6">
+                <thead><tr class="bg-gray-100 text-gray-600"><th class="p-2">Time Slot</th><th class="p-2">Cap</th><th class="p-2">Bk</th><th class="p-2">Av</th><th class="p-2">Stat</th></tr></thead>
+                <tbody>
+                    <tr class="border-b"><td class="p-2 font-medium">09:00-09:30</td><td class="p-2">10</td><td class="p-2">8</td><td class="p-2">2</td><td class="p-2 text-green-600">Open</td></tr>
+                    <tr class="border-b"><td class="p-2 font-medium">09:30-10:00</td><td class="p-2">10</td><td class="p-2">10</td><td class="p-2">0</td><td class="p-2 text-red-500">Full</td></tr>
+                    <tr class="border-b"><td class="p-2 font-medium">10:00-10:30</td><td class="p-2">10</td><td class="p-2">7</td><td class="p-2">3</td><td class="p-2 text-green-600">Open</td></tr>
+                </tbody>
+            </table>
+            <button class="w-full py-2 bg-green-50 text-green-700 border border-green-200 rounded font-medium mb-3">Add Slot</button>
+            <button class="w-full py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded font-medium">Close All Slots</button>
+        </div>
+    </div>
+
+    <!-- Procurement Detail Panel (Slide-in) -->
+    <div id="panel-procurement" class="fixed inset-y-0 right-0 w-[500px] max-w-full bg-white shadow-2xl z-40 border-l border-gray-200 slide-panel flex flex-col">
+        <div class="p-4 border-b flex justify-between items-center bg-gray-50 shrink-0">
+            <h3 class="font-semibold text-lg">Procurement Details</h3>
+            <button onclick="closePanel('panel-procurement')" class="text-gray-500 hover:text-gray-800 text-xl">&times;</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6" id="proc-detail-content">
+            <!-- Populated dynamically -->
+        </div>
+    </div>
+
+    <!-- Generic Confirmation Modal -->
+    <div id="modal-confirm" class="fixed inset-0 modal-overlay items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-96 max-w-[90%] overflow-hidden">
+            <div class="p-5">
+                <h3 class="text-lg font-bold mb-2">Confirm Action</h3>
+                <p class="text-gray-600 text-sm mb-6" id="confirm-msg">Are you sure you want to proceed?</p>
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeModal('modal-confirm')" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Cancel</button>
+                    <button id="confirm-btn" class="px-4 py-2 bg-[#2E7D32] text-white rounded text-sm hover:bg-green-800">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div id="modal-receipt" class="fixed inset-0 modal-overlay items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-[500px] max-w-full max-h-full overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 text-center relative bg-gray-50">
+                <button onclick="closeModal('modal-receipt')" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-xl">&times;</button>
+                <div class="text-3xl mb-2">🌾</div>
+                <h2 class="font-bold text-lg text-[#2E7D32]">GOVERNMENT OF WEST BENGAL</h2>
+                <p class="text-xs text-gray-600 uppercase tracking-widest">Department of Agriculture</p>
+                <h3 class="font-bold mt-4 border border-gray-300 inline-block px-4 py-1 bg-white">PAYMENT RECEIPT</h3>
+            </div>
+            <div class="p-6" id="receipt-content">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="p-4 border-t bg-gray-50 flex gap-3 justify-center shrink-0">
+                <button class="px-4 py-2 bg-white border border-gray-300 shadow-sm rounded text-sm hover:bg-gray-50 flex items-center gap-2"><span>📥</span> Download PDF</button>
+                <button class="px-4 py-2 bg-[#2E7D32] text-white rounded shadow-sm text-sm hover:bg-green-800 flex items-center gap-2"><span>🖨️</span> Print Receipt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container flex flex-col gap-2"></div>
+
+    <script>
+        /* --- STATE & DATA --- */
+        let currentLang = 'en';
+        
+        const queueData = [
+            { id: 'A-127', name: 'Ramesh Das', phone: '98765xxxxx', slot: '10:00-10:30', crop: 'Rice', qty: '500 kg', status: 'Processing' },
+            { id: 'A-128', name: 'Sunil Mondal', phone: '98764xxxxx', slot: '10:30-11:00', crop: 'Wheat', qty: '300 kg', status: 'Waiting' },
+            { id: 'A-129', name: 'Priya Sen', phone: '98763xxxxx', slot: '11:00-11:30', crop: 'Rice', qty: '450 kg', status: 'Waiting' },
+            { id: 'A-130', name: 'Kamal Ghosh', phone: '98762xxxxx', slot: '11:30-12:00', crop: 'Jute', qty: '200 kg', status: 'Waiting' },
+            { id: 'A-131', name: 'Arun Biswas', phone: '98761xxxxx', slot: '12:00-12:30', crop: 'Potato', qty: '600 kg', status: 'Waiting' },
+            { id: 'A-126', name: 'Tapan Roy', phone: '98766xxxxx', slot: '09:30-10:00', crop: 'Rice', qty: '400 kg', status: 'Completed' },
+            { id: 'A-125', name: 'Bikash Halder', phone: '98767xxxxx', slot: '09:00-09:30', crop: 'Wheat', qty: '350 kg', status: 'No-show' }
+        ];
+
+        const farmerData = [
+            { name: 'Ramesh Das', phone: '9876543210', aadhaar: 'XXXX-XXXX-1234', dist: 'Kolkata', vill: 'Baruipur', crop: 'Rice', date: '15-Jul-2026', status: 'Verified ✅', land: '2.5 acres', type: 'Irrigated' },
+            { name: 'Sunil Mondal', phone: '9876543211', aadhaar: 'XXXX-XXXX-2345', dist: 'Howrah', vill: 'Uluberia', crop: 'Wheat', date: '20-Jul-2026', status: 'Verified ✅', land: '1.2 acres', type: 'Rainfed' },
+            { name: 'Priya Sen', phone: '9876543212', aadhaar: 'XXXX-XXXX-3456', dist: 'Hooghly', vill: 'Chinsurah', crop: 'Rice', date: '25-Jul-2026', status: 'Pending ⏳', land: '3.0 acres', type: 'Irrigated' },
+            { name: 'Kamal Ghosh', phone: '9876543213', aadhaar: 'XXXX-XXXX-4567', dist: '24 Parganas', vill: 'Barasat', crop: 'Jute', date: '01-Aug-2026', status: 'Verified ✅', land: '0.8 acres', type: 'Rainfed' },
+            { name: 'Arun Biswas', phone: '9876543214', aadhaar: 'XXXX-XXXX-5678', dist: 'Kolkata', vill: 'Sonarpur', crop: 'Potato', date: '05-Aug-2026', status: 'Pending ⏳', land: '1.5 acres', type: 'Irrigated' },
+            { name: 'Tapan Roy', phone: '9876543215', aadhaar: 'XXXX-XXXX-6789', dist: 'Howrah', vill: 'Shibpur', crop: 'Rice', date: '10-Aug-2026', status: 'Rejected ❌', land: '2.0 acres', type: 'Irrigated' },
+            { name: 'Bikash Halder', phone: '9876543216', aadhaar: 'XXXX-XXXX-7890', dist: 'Hooghly', vill: 'Serampore', crop: 'Wheat', date: '12-Aug-2026', status: 'Verified ✅', land: '4.5 acres', type: 'Irrigated' },
+            { name: 'Anjali Dutta', phone: '9876543217', aadhaar: 'XXXX-XXXX-8901', dist: 'Kolkata', vill: 'Jadavpur', crop: 'Rice', date: '15-Aug-2026', status: 'Verified ✅', land: '1.0 acres', type: 'Rainfed' },
+            { name: 'Debashis Pal', phone: '9876543218', aadhaar: 'XXXX-XXXX-9012', dist: '24 Parganas', vill: 'Basirhat', crop: 'Jute', date: '18-Aug-2026', status: 'Pending ⏳', land: '2.2 acres', type: 'Irrigated' },
+            { name: 'Mita Sarkar', phone: '9876543219', aadhaar: 'XXXX-XXXX-0123', dist: 'Howrah', vill: 'Domjur', crop: 'Potato', date: '20-Aug-2026', status: 'Verified ✅', land: '1.8 acres', type: 'Irrigated' }
+        ];
+
+        const procData = [
+            { name: 'Ramesh Das', crop: 'Rice', qty: '500 kg', rate: '₹22/kg', total: '₹11,000', centre: 'Kolkata Centre', status: 'Payment Completed', date: '01-Sep-2026', step: 5 },
+            { name: 'Sunil Mondal', crop: 'Wheat', qty: '300 kg', rate: '₹25/kg', total: '₹7,500', centre: 'Kolkata Centre', status: 'Payment Processing', date: '01-Sep-2026', step: 4 },
+            { name: 'Priya Sen', crop: 'Rice', qty: '450 kg', rate: '₹22/kg', total: '₹9,900', centre: 'Kolkata Centre', status: 'Procurement Completed', date: '01-Sep-2026', step: 3 },
+            { name: 'Kamal Ghosh', crop: 'Jute', qty: '200 kg', rate: '₹45/kg', total: '₹9,000', centre: 'Howrah Centre', status: 'At Centre', date: '01-Sep-2026', step: 2 },
+            { name: 'Arun Biswas', crop: 'Potato', qty: '600 kg', rate: '₹18/kg', total: '₹10,800', centre: 'Kolkata Centre', status: 'Slot Booked', date: '02-Sep-2026', step: 1 }
+        ];
+
+        const payData = [
+            { id: 1, name: 'Ramesh Das', crop: 'Rice', qty: '500 kg', rate: '₹22/kg', total: '₹11,000', status: 'Completed ✅', txn: 'TXN-2026-0901-001', date: '01-Sep-2026' },
+            { id: 2, name: 'Sunil Mondal', crop: 'Wheat', qty: '300 kg', rate: '₹25/kg', total: '₹7,500', status: 'Processing 🔄', txn: '-', date: '-' },
+            { id: 3, name: 'Priya Sen', crop: 'Rice', qty: '450 kg', rate: '₹22/kg', total: '₹9,900', status: 'Pending ⏳', txn: '-', date: '-' },
+            { id: 4, name: 'Kamal Ghosh', crop: 'Jute', qty: '200 kg', rate: '₹45/kg', total: '₹9,000', status: 'Pending ⏳', txn: '-', date: '-' },
+            { id: 5, name: 'Tapan Roy', crop: 'Rice', qty: '400 kg', rate: '₹22/kg', total: '₹8,800', status: 'Completed ✅', txn: 'TXN-2026-0831-005', date: '31-Aug-2026' },
+            { id: 6, name: 'Bikash Halder', crop: 'Wheat', qty: '350 kg', rate: '₹25/kg', total: '₹8,750', status: 'Completed ✅', txn: 'TXN-2026-0831-006', date: '31-Aug-2026' },
+            { id: 7, name: 'Anjali Dutta', crop: 'Rice', qty: '550 kg', rate: '₹22/kg', total: '₹12,100', status: 'Processing 🔄', txn: 'TXN-2026-0901-007', date: '-' },
+            { id: 8, name: 'Debashis Pal', crop: 'Jute', qty: '180 kg', rate: '₹45/kg', total: '₹8,100', status: 'Pending ⏳', txn: '-', date: '-' }
+        ];
+
+        /* --- INITIALIZATION --- */
+        window.onload = () => {
+            renderQueue();
+            renderFarmers();
+            renderCalendar();
+            renderProcurement();
+            renderPayments();
+            initCharts();
+        };
+
+        /* --- UI INTERACTIONS --- */
+        function login() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-app').classList.remove('hidden');
+            showToast('Logged in successfully', 'success');
+        }
+
+        function logout() {
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('login-screen').style.display = 'flex';
+        }
+
+        function togglePassword() {
+            const pwd = document.getElementById('login-pwd');
+            pwd.type = pwd.type === 'password' ? 'text' : 'password';
+        }
+
+        function navTo(screenId, element) {
+            // Update sidebar active state
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+            if(element) element.classList.add('active');
+
+            // Hide all screens, show target
+            document.querySelectorAll('.screen-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+
+            // Update header title
+            const titleEn = element ? element.querySelector('span:last-child').getAttribute('data-en') : 'Dashboard';
+            const titleBn = element ? element.querySelector('span:last-child').getAttribute('data-bn') : 'ড্যাশবোর্ড';
+            
+            const headerTitle = document.getElementById('header-title');
+            headerTitle.setAttribute('data-en', titleEn);
+            headerTitle.setAttribute('data-bn', titleBn);
+            headerTitle.innerText = currentLang === 'en' ? titleEn : titleBn;
+            
+            // Re-render charts if needed to fix resize issues
+            if(screenId === 'screen-dashboard' || screenId === 'screen-analytics') {
+                setTimeout(initCharts, 100);
+            }
+        }
+
+        function toggleLang() {
+            currentLang = currentLang === 'en' ? 'bn' : 'en';
+            document.getElementById('lang-ind').innerText = currentLang === 'en' ? 'EN | বাং' : 'বাং | EN';
+            
+            document.querySelectorAll('.t-translate').forEach(el => {
+                el.innerText = el.getAttribute(`data-${currentLang}`) || el.innerText;
+            });
+        }
+
+        function getStatusBadge(status) {
+            let cls = 'badge-pending';
+            if(status.includes('Processing')) cls = 'badge-processing';
+            if(status.includes('Completed') || status.includes('Verified')) cls = 'badge-completed';
+            if(status.includes('Rejected') || status.includes('No-show') || status.includes('Cancelled')) cls = 'badge-cancelled';
+            return `<span class="${cls} px-2 py-1 rounded text-xs font-semibold whitespace-nowrap">${status}</span>`;
+        }
+
+        /* --- RENDER FUNCTIONS --- */
+        function renderQueue() {
+            const tbody = document.getElementById('queue-table-body');
+            tbody.innerHTML = queueData.map((row, idx) => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="p-4 font-medium">${row.id}</td>
+                    <td class="p-4">${row.name}</td>
+                    <td class="p-4">${row.phone}</td>
+                    <td class="p-4">${row.slot}</td>
+                    <td class="p-4">${row.crop}</td>
+                    <td class="p-4">${row.qty}</td>
+                    <td class="p-4" id="q-stat-${idx}">${getStatusBadge(row.status)}</td>
+                    <td class="p-4 text-center">
+                        ${row.status === 'Waiting' ? 
+                            `<button onclick="confirmAction('Call Next', 'mark q-stat-${idx} Processing')" class="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded hover:bg-green-100 mr-1">Call</button>
+                             <button onclick="confirmAction('Skip/No-show', 'mark q-stat-${idx} No-show')" class="text-xs bg-gray-50 text-gray-600 border border-gray-200 px-2 py-1 rounded hover:bg-gray-100">Skip</button>` : 
+                        row.status === 'Processing' ?
+                            `<button onclick="confirmAction('Mark Completed', 'mark q-stat-${idx} Completed')" class="text-xs bg-[#4CAF50] text-white px-3 py-1 rounded hover:bg-[#2E7D32]">Complete</button>` :
+                            `<span class="text-gray-400 text-xs">-</span>`
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderFarmers() {
+            const tbody = document.getElementById('farmer-table-body');
+            tbody.innerHTML = farmerData.map((row, i) => `
+                <tr class="hover:bg-gray-50 transition" onclick="openFarmerDetail(${i})">
+                    <td class="p-4 font-medium">${row.name}</td>
+                    <td class="p-4 text-gray-600">${row.phone}</td>
+                    <td class="p-4 text-gray-600">${row.aadhaar}</td>
+                    <td class="p-4">${row.dist}</td>
+                    <td class="p-4">${row.crop}</td>
+                    <td class="p-4 text-gray-500">${row.date}</td>
+                    <td class="p-4">${getStatusBadge(row.status)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            let html = '';
+            // Offset for Sept 2026 starts on Tuesday (index 2)
+            for(let i=0; i<2; i++) html += `<div class="bg-gray-50 p-2 min-h-[80px]"></div>`;
+            
+            for(let day=1; day<=30; day++) {
+                let color = 'bg-green-100 text-green-800'; // Default available
+                let label = '45/60';
+                
+                if(day === 1) { color = 'bg-orange-100 text-orange-800'; label = '45/60'; }
+                else if(day === 2) { color = 'bg-green-100 text-green-800'; label = '12/60'; }
+                else if(day === 3) { color = 'bg-red-100 text-red-800'; label = '60/60 Full'; }
+                else if(day === 6) { color = 'bg-gray-100 text-gray-500'; label = 'Closed'; }
+                else if(day > 15) { color = 'bg-transparent text-gray-400 border border-gray-200'; label = '-'; }
+
+                html += `
+                    <div class="bg-white p-2 min-h-[80px] hover:bg-gray-50 cursor-pointer transition flex flex-col" onclick="openSlotPanel(${day})">
+                        <span class="text-sm font-semibold text-gray-700">${day}</span>
+                        <div class="mt-auto text-xs ${color} px-1.5 py-0.5 rounded text-center truncate">${label}</div>
+                    </div>
+                `;
+            }
+            grid.innerHTML = html;
+        }
+
+        function renderProcurement() {
+            const tbody = document.getElementById('proc-table-body');
+            tbody.innerHTML = procData.map((row, i) => `
+                <tr class="hover:bg-gray-50 transition cursor-pointer" onclick="openProcDetail(${i})">
+                    <td class="p-4 font-medium">${row.name}</td>
+                    <td class="p-4">${row.crop}</td>
+                    <td class="p-4 font-semibold">${row.qty}</td>
+                    <td class="p-4 text-gray-500">${row.rate}</td>
+                    <td class="p-4 font-bold text-gray-800">${row.total}</td>
+                    <td class="p-4">${getStatusBadge(row.status)}</td>
+                    <td class="p-4 text-gray-500">${row.date}</td>
+                    <td class="p-4 text-center">
+                        <button class="text-[#2196F3] hover:underline text-sm font-medium">View</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPayments() {
+            const tbody = document.getElementById('pay-table-body');
+            tbody.innerHTML = payData.map(row => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="p-4"><input type="checkbox" class="pay-cb rounded text-blue-500" ${row.status.includes('Completed') ? 'disabled' : ''}></td>
+                    <td class="p-4 font-medium">${row.name}</td>
+                    <td class="p-4">${row.crop}</td>
+                    <td class="p-4">${row.qty}</td>
+                    <td class="p-4 font-bold">${row.total}</td>
+                    <td class="p-4">${getStatusBadge(row.status)}</td>
+                    <td class="p-4 text-xs font-mono text-gray-500">${row.txn}</td>
+                    <td class="p-4 text-center">
+                        ${row.status.includes('Completed') 
+                            ? `<button onclick="openReceipt('${row.name}', '${row.total}', '${row.txn}', '${row.date}')" class="text-[#2E7D32] text-sm hover:underline font-medium">View Receipt</button>`
+                            : row.status.includes('Pending')
+                                ? `<button onclick="confirmAction('Mark Paid', 'toast Payment Initiated')" class="text-[#2196F3] text-sm hover:underline font-medium">Mark as Paid</button>`
+                                : `<span class="text-gray-400 text-sm">Processing...</span>`
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        /* --- MODALS & PANELS --- */
+        function openFarmerDetail(index) {
+            const f = farmerData[index];
+            const content = document.getElementById('farmer-detail-content');
+            const actions = document.getElementById('farmer-detail-actions');
+            
+            content.innerHTML = `
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl">👤</div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">${f.name}</h2>
+                        <p class="text-gray-500 text-sm">${f.dist}, ${f.vill}</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-4 text-sm mb-6">
+                    <div class="grid grid-cols-2 pb-2 border-b"><span class="text-gray-500">Mobile</span><span class="font-medium">${f.phone}</span></div>
+                    <div class="grid grid-cols-2 pb-2 border-b"><span class="text-gray-500">Aadhaar</span><span class="font-medium">${f.aadhaar}</span></div>
+                    <div class="grid grid-cols-2 pb-2 border-b"><span class="text-gray-500">Reg. Date</span><span class="font-medium">${f.date}</span></div>
+                    <div class="grid grid-cols-2 pb-2 border-b"><span class="text-gray-500">Status</span><span>${getStatusBadge(f.status)}</span></div>
+                </div>
+                
+                <h4 class="font-semibold text-gray-800 mb-3 border-b pb-2">Land Details</h4>
+                <div class="space-y-3 text-sm mb-6">
+                    <div class="grid grid-cols-2"><span class="text-gray-500">Total Area</span><span class="font-medium">${f.land}</span></div>
+                    <div class="grid grid-cols-2"><span class="text-gray-500">Land Type</span><span class="font-medium">${f.type}</span></div>
+                    <div class="grid grid-cols-2"><span class="text-gray-500">Primary Crops</span><span class="font-medium">${f.crop}, Mustard</span></div>
+                </div>
+                
+                <h4 class="font-semibold text-gray-800 mb-3 border-b pb-2">History</h4>
+                <table class="w-full text-left text-xs">
+                    <tr class="text-gray-500"><th class="pb-2">Date</th><th class="pb-2">Crop</th><th class="pb-2">Qty</th><th class="pb-2">Amount</th></tr>
+                    <tr><td class="py-1">20-May-26</td><td>Potato</td><td>300kg</td><td>₹4,500</td></tr>
+                    <tr><td class="py-1">10-Feb-26</td><td>Wheat</td><td>400kg</td><td>₹10,000</td></tr>
+                </table>
+            `;
+
+            if(f.status.includes('Pending')) {
+                actions.innerHTML = `
+                    <button onclick="confirmAction('Verify Farmer', 'toast Farmer Verified Successfully'); closePanel('panel-farmer')" class="flex-1 py-2 bg-[#4CAF50] text-white rounded font-medium hover:bg-[#2E7D32]">Verify / Approve</button>
+                    <button onclick="confirmAction('Reject Farmer', 'toast Farmer Rejected'); closePanel('panel-farmer')" class="flex-1 py-2 bg-white border border-red-300 text-red-600 rounded font-medium hover:bg-red-50">Reject</button>
+                `;
+            } else {
+                actions.innerHTML = `<button onclick="closePanel('panel-farmer')" class="w-full py-2 bg-gray-100 text-gray-700 rounded font-medium hover:bg-gray-200">Close</button>`;
+            }
+
+            document.getElementById('panel-farmer').classList.add('active');
+            document.querySelector('.modal-overlay').classList.add('active');
+        }
+
+        function openSlotPanel(day) {
+            document.getElementById('slot-date-title').innerText = `September ${day}, 2026`;
+            document.getElementById('panel-slot').classList.add('active');
+            document.querySelector('.modal-overlay').classList.add('active');
+        }
+
+        function openProcDetail(index) {
+            const p = procData[index];
+            const steps = ['Registration', 'Slot Booked', 'At Centre', 'Procurement Completed', 'Payment Processing', 'Payment Completed'];
+            
+            let stepperHtml = `<div class="flex flex-col gap-0 relative mb-6">`;
+            steps.forEach((s, i) => {
+                const isPast = i < p.step;
+                const isCurr = i === p.step - 1;
+                const color = isPast ? 'bg-[#4CAF50]' : (isCurr ? 'bg-blue-500' : 'bg-gray-200');
+                const tColor = isPast ? 'text-[#2E7D32] font-semibold' : (isCurr ? 'text-blue-700 font-bold' : 'text-gray-400');
+                const dot = isPast ? '✓' : (i+1);
+                
+                stepperHtml += `
+                    <div class="flex gap-4 items-start relative z-10 py-2">
+                        <div class="w-6 h-6 rounded-full ${color} text-white flex items-center justify-center text-xs shrink-0 font-bold z-10">${dot}</div>
+                        <div class="${tColor} text-sm pt-0.5">${s}</div>
+                    </div>
+                `;
+            });
+            stepperHtml += `
+                <div class="absolute left-[11px] top-4 bottom-4 w-0.5 bg-gray-200 z-0"></div>
+                <div class="absolute left-[11px] top-4 w-0.5 bg-[#4CAF50] z-0" style="height: ${(p.step-1)*20}%"></div>
+            </div>`;
+
+            document.getElementById('proc-detail-content').innerHTML = `
+                <div class="mb-6 p-4 bg-gray-50 rounded border">
+                    <h3 class="font-bold text-lg mb-1">${p.name}</h3>
+                    <p class="text-sm text-gray-500">ID: PR-2026-${String(index+1).padStart(4, '0')}</p>
+                </div>
+                
+                <h4 class="font-semibold text-gray-800 mb-3 border-b pb-2">Tracker</h4>
+                ${stepperHtml}
+
+                <h4 class="font-semibold text-gray-800 mb-3 mt-4 border-b pb-2">Procurement Details</h4>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div><span class="text-gray-500 block">Crop</span><span class="font-medium">${p.crop}</span></div>
+                    <div><span class="text-gray-500 block">Quantity</span><span class="font-medium">${p.qty}</span></div>
+                    <div><span class="text-gray-500 block">Rate/Unit</span><span class="font-medium">${p.rate}</span></div>
+                    <div><span class="text-gray-500 block">Total Amount</span><span class="font-bold text-lg text-green-700">${p.total}</span></div>
+                    <div class="col-span-2"><span class="text-gray-500 block">Centre</span><span class="font-medium">${p.centre}</span></div>
+                </div>
+
+                <div class="mt-8">
+                    ${p.step < 4 ? `<button onclick="confirmAction('Update Stage', 'toast Stage Updated'); closePanel('panel-procurement')" class="w-full py-2 bg-[#2E7D32] text-white rounded font-medium hover:bg-green-800">Update Next Stage</button>` : `<button onclick="closePanel('panel-procurement')" class="w-full py-2 bg-gray-100 text-gray-700 rounded font-medium">Close</button>`}
+                </div>
+            `;
+            document.getElementById('panel-procurement').classList.add('active');
+            document.querySelector('.modal-overlay').classList.add('active');
+        }
+
+        function openReceipt(name, amount, txn, date) {
+            document.getElementById('receipt-content').innerHTML = `
+                <div class="text-sm space-y-4 text-left">
+                    <div class="flex justify-between border-b pb-2"><span class="text-gray-500">Receipt No:</span><span class="font-mono font-medium">REC-${txn.split('-').pop()}</span></div>
+                    <div class="flex justify-between border-b pb-2"><span class="text-gray-500">Date:</span><span class="font-medium">${date}</span></div>
+                    <div class="flex justify-between border-b pb-2"><span class="text-gray-500">Farmer Name:</span><span class="font-bold">${name}</span></div>
+                    <div class="flex justify-between border-b pb-2"><span class="text-gray-500">Payment Mode:</span><span class="font-medium">Direct Bank Transfer (NEFT)</span></div>
+                    <div class="flex justify-between border-b pb-2"><span class="text-gray-500">Bank Account:</span><span class="font-mono font-medium">XXXX-XXXX-1234</span></div>
+                    <div class="flex justify-between border-b pb-2"><span class="text-gray-500">Transaction ID:</span><span class="font-mono font-medium">${txn}</span></div>
+                    <div class="flex justify-between pt-2 items-end">
+                        <span class="text-gray-800 font-semibold uppercase">Total Paid:</span>
+                        <span class="text-2xl font-bold text-[#2E7D32]">${amount}</span>
+                    </div>
+                </div>
+                <div class="mt-8 text-center text-xs text-gray-400">
+                    <p>This is a computer-generated receipt and does not require a signature.</p>
+                </div>
+            `;
+            document.getElementById('modal-receipt').classList.add('active');
+        }
+
+        function closePanel(id) {
+            document.getElementById(id).classList.remove('active');
+            setTimeout(() => {
+                if(!document.querySelector('.slide-panel.active')) {
+                    document.querySelector('.modal-overlay').classList.remove('active');
+                }
+            }, 300);
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            document.querySelector('.modal-overlay').classList.remove('active');
+        }
+
+        /* --- ACTIONS & TOASTS --- */
+        let pendingAction = null;
+        function confirmAction(title, actionStr) {
+            document.getElementById('confirm-msg').innerText = `Are you sure you want to ${title}?`;
+            document.getElementById('modal-confirm').classList.add('active');
+            pendingAction = actionStr;
+            
+            document.getElementById('confirm-btn').onclick = () => {
+                closeModal('modal-confirm');
+                if(pendingAction) {
+                    if(pendingAction.startsWith('toast ')) {
+                        showToast(pendingAction.substring(6), 'success');
+                    } else if(pendingAction.startsWith('mark ')) {
+                        const parts = pendingAction.split(' ');
+                        const targetId = parts[1];
+                        const status = parts[2];
+                        const el = document.getElementById(targetId);
+                        if(el) el.innerHTML = getStatusBadge(status);
+                        showToast(`Status updated to ${status}`, 'success');
+                    }
+                }
+            };
+        }
+
+        function processSelectedPayments() {
+            const checked = document.querySelectorAll('.pay-cb:checked');
+            if(checked.length === 0) {
+                showToast('Please select at least one payment to process', 'error');
+                return;
+            }
+            confirmAction(`process ${checked.length} selected payments`, `toast ${checked.length} Payments Processed Successfully`);
+        }
+
+        function showToast(msg, type='success') {
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-[#4CAF50]' : 'bg-[#F44336]';
+            const icon = type === 'success' ? '✓' : '!';
+            
+            toast.className = `toast bg-white border-l-4 ${type==='success'?'border-green-500':'border-red-500'} shadow-lg rounded p-4 pr-8 flex items-center gap-3 relative`;
+            toast.innerHTML = `
+                <div class="w-6 h-6 rounded-full ${bg} text-white flex items-center justify-center text-xs shrink-0">${icon}</div>
+                <span class="text-sm font-medium text-gray-800">${msg}</span>
+            `;
+            
+            document.getElementById('toast-container').appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after 3s
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Setup modal overlay click to close
+        document.querySelector('.modal-overlay').addEventListener('click', function(e) {
+            if(e.target === this) {
+                document.querySelectorAll('.slide-panel').forEach(p => p.classList.remove('active'));
+                document.querySelectorAll('[id^="modal-"]').forEach(m => m.classList.remove('active'));
+                this.classList.remove('active');
+            }
+        });
+
+        // Select All Checkbox
+        document.getElementById('pay-select-all')?.addEventListener('change', function() {
+            document.querySelectorAll('.pay-cb:not([disabled])').forEach(cb => cb.checked = this.checked);
+        });
+
+        /* --- CANVAS CHARTS --- */
+        let charts = [];
+        
+        function initCharts() {
+            // Clear existing
+            charts.forEach(c => c && typeof c === 'function' ? c() : null);
+            charts = [];
+            
+            drawBarChart('dashChart1', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], [28, 35, 42, 38, 45, 50, 12]);
+            drawDonutChart('dashChart2', ['Rice', 'Wheat', 'Jute', 'Potato', 'Other'], [45, 25, 15, 10, 5], ['#4CAF50', '#FFB300', '#8D6E63', '#795548', '#B0BEC5']);
+            
+            drawAreaChart('analyticsChart1', ['1', '5', '10', '15', '20', '25', '31'], [10, 25, 40, 35, 60, 80, 110]);
+            drawHorizontalBarChart('analyticsChart2', ['Rice', 'Wheat', 'Potato', 'Jute', 'Mustard'], [12.5, 8.2, 6.8, 4.5, 2.1]);
+            drawLineChart('analyticsChart3', ['Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'], [100, 250, 480, 720, 1100, 1850, 2847]);
+            drawDonutChart('analyticsChart4', ['Completed', 'Pending', 'Processing'], [65, 20, 15], ['#4CAF50', '#FF9800', '#2196F3']);
+        }
+
+        function getCtx(id) {
+            const canvas = document.getElementById(id);
+            if(!canvas) return null;
+            // Handle DPI for crisp rendering
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * 2;
+            canvas.height = rect.height * 2;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(2,2);
+            return {ctx, w: rect.width, h: rect.height};
+        }
+
+        function drawBarChart(id, labels, data) {
+            const c = getCtx(id); if(!c) return;
+            const {ctx, w, h} = c;
+            
+            const pad = 30;
+            const max = Math.max(...data) * 1.2;
+            const barW = (w - pad*2) / labels.length * 0.6;
+            const stepX = (w - pad*2) / labels.length;
+
+            ctx.fillStyle = '#f0f0f0';
+            for(let i=0; i<4; i++) {
+                const y = h - pad - (i/3)*(h - pad*2);
+                ctx.fillRect(pad, y, w - pad*2, 1);
+                ctx.fillStyle = '#9e9e9e';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(Math.round((i/3)*max), pad-5, y+4);
+                ctx.fillStyle = '#f0f0f0';
+            }
+
+            labels.forEach((l, i) => {
+                const x = pad + i*stepX + stepX/2;
+                const barH = (data[i] / max) * (h - pad*2);
+                
+                // Draw bar
+                ctx.fillStyle = '#4CAF50';
+                ctx.beginPath();
+                ctx.roundRect(x - barW/2, h - pad - barH, barW, barH, [4, 4, 0, 0]);
+                ctx.fill();
+
+                // Draw label
+                ctx.fillStyle = '#616161';
+                ctx.textAlign = 'center';
+                ctx.fillText(l, x, h - pad + 15);
+            });
+        }
+
+        function drawDonutChart(id, labels, data, colors) {
+            const c = getCtx(id); if(!c) return;
+            const {ctx, w, h} = c;
+            
+            const cx = w/2, cy = h/2;
+            const r = Math.min(w, h)/2.5;
+            const total = data.reduce((a,b)=>a+b, 0);
+            let start = -Math.PI/2;
+
+            data.forEach((val, i) => {
+                const slice = (val/total) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, start, start + slice);
+                ctx.fillStyle = colors[i];
+                ctx.fill();
+                start += slice;
+            });
+            
+            // Inner circle for donut
+            ctx.beginPath();
+            ctx.arc(cx, cy, r*0.6, 0, Math.PI*2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+
+            // Legend
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'left';
+            labels.forEach((l, i) => {
+                ctx.fillStyle = colors[i];
+                ctx.fillRect(w - 70, 20 + i*15, 8, 8);
+                ctx.fillStyle = '#616161';
+                ctx.fillText(l, w - 55, 28 + i*15);
+            });
+        }
+
+        function drawLineChart(id, labels, data) {
+            const c = getCtx(id); if(!c) return;
+            const {ctx, w, h} = c;
+            
+            const pad = 30;
+            const max = Math.max(...data) * 1.1;
+            const stepX = (w - pad*2) / (labels.length - 1);
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#2196F3';
+            ctx.lineWidth = 3;
+            
+            labels.forEach((l, i) => {
+                const x = pad + i*stepX;
+                const y = h - pad - (data[i]/max)*(h - pad*2);
+                if(i===0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+                
+                // Label
+                ctx.fillStyle = '#616161';
+                ctx.textAlign = 'center';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(l, x, h - pad + 15);
+            });
+            ctx.stroke();
+            
+            // Draw points
+            labels.forEach((l, i) => {
+                const x = pad + i*stepX;
+                const y = h - pad - (data[i]/max)*(h - pad*2);
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI*2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+
+        function drawAreaChart(id, labels, data) {
+            const c = getCtx(id); if(!c) return;
+            const {ctx, w, h} = c;
+            
+            const pad = 30;
+            const max = Math.max(...data) * 1.2;
+            const stepX = (w - pad*2) / (labels.length - 1);
+
+            // Draw Area
+            ctx.beginPath();
+            ctx.moveTo(pad, h - pad);
+            labels.forEach((l, i) => {
+                ctx.lineTo(pad + i*stepX, h - pad - (data[i]/max)*(h - pad*2));
+            });
+            ctx.lineTo(pad + (labels.length-1)*stepX, h - pad);
+            ctx.closePath();
+            
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, 'rgba(76, 175, 80, 0.5)');
+            grad.addColorStop(1, 'rgba(76, 175, 80, 0.05)');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Draw Line
+            ctx.beginPath();
+            ctx.strokeStyle = '#4CAF50';
+            ctx.lineWidth = 2;
+            labels.forEach((l, i) => {
+                const x = pad + i*stepX;
+                const y = h - pad - (data[i]/max)*(h - pad*2);
+                if(i===0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+                
+                ctx.fillStyle = '#616161';
+                ctx.textAlign = 'center';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(l, x, h - pad + 15);
+            });
+            ctx.stroke();
+        }
+
+        function drawHorizontalBarChart(id, labels, data) {
+            const c = getCtx(id); if(!c) return;
+            const {ctx, w, h} = c;
+            
+            const padL = 60, padR = 20, padT = 20, padB = 20;
+            const max = Math.max(...data) * 1.1;
+            const stepY = (h - padT - padB) / labels.length;
+
+            labels.forEach((l, i) => {
+                const y = padT + i*stepY + stepY/2;
+                const barW = (data[i] / max) * (w - padL - padR);
+                
+                // Label
+                ctx.fillStyle = '#616161';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.font = '11px sans-serif';
+                ctx.fillText(l, padL - 10, y);
+
+                // Bar
+                ctx.fillStyle = '#81C784';
+                ctx.beginPath();
+                ctx.roundRect(padL, y - 10, barW, 20, [0, 4, 4, 0]);
+                ctx.fill();
+                
+                // Value
+                ctx.fillStyle = '#212121';
+                ctx.textAlign = 'left';
+                ctx.fillText(data[i] + 'k', padL + barW + 5, y);
+            });
+        }
+        
+        // Window resize re-draws charts
+        window.addEventListener('resize', () => {
+            if(window.resizeTimeout) clearTimeout(window.resizeTimeout);
+            window.resizeTimeout = setTimeout(initCharts, 200);
+        });
+    </script>
+</body>
+</html>
